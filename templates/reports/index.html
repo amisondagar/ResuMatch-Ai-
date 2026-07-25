@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Candidate Reports — ResuMatch.Ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+  <div>
+    <h1 class="page-title">Candidate Reports</h1>
+    <p class="page-subtitle">Unified candidate rankings, ATS evaluation scores, PDF reports, and CSV exports</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    {% if selected_jd_id %}
+    <a href="{{ url_for('reports.ranking_pdf', jd_id=selected_jd_id) }}" class="btn btn-secondary btn-sm">Download Ranking PDF</a>
+    <a href="{{ url_for('reports.export_csv') }}?jd_id={{ selected_jd_id }}" class="btn btn-success btn-sm">Export CSV</a>
+    {% else %}
+    <a href="{{ url_for('reports.export_csv') }}" class="btn btn-success btn-sm">Export All CSV</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="glass-card p-24 mb-24 fade-in">
+  <form method="GET" action="{{ url_for('reports.index') }}" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <div style="min-width:200px;flex:1">
+      <label class="form-label">Job Description</label>
+      <select name="jd_id" class="form-control" onchange="this.form.submit()">
+        <option value="">All Jobs</option>
+        {% for jd in jds %}
+        <option value="{{ jd.id }}" {% if selected_jd_id == jd.id %}selected{% endif %}>{{ jd.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="min-width:160px">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-control" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        <option value="shortlisted" {% if status_filter == 'shortlisted' %}selected{% endif %}>Shortlisted</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="interview" {% if status_filter == 'interview' %}selected{% endif %}>Interview</option>
+        <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </div>
+    <div style="width:120px">
+      <label class="form-label">Min Score</label>
+      <input type="number" name="min_score" class="form-control" min="0" max="100" value="{{ min_score or '' }}" placeholder="0">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="{{ url_for('reports.index') }}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Main Candidate Rankings & Reports Table -->
+<div class="glass-card mb-24 fade-in">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <div>
+      <h3 style="font-weight:700">Ranked Candidates</h3>
+      <p style="color:var(--text-muted);font-size:0.82rem;margin-top:2px">
+        {{ scores|length }} candidate(s) evaluated and ranked by ATS score
+      </p>
+    </div>
+  </div>
+
+  {% if scores %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Candidate</th>
+          <th>Job</th>
+          <th>Overall</th>
+          <th>Skills</th>
+          <th>Exp.</th>
+          <th>Education</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scores %}
+        {% set score_val = s.overall_score or 0 %}
+        {% set bg_color = '#10b981' if score_val >= 70 else '#f59e0b' if score_val >= 40 else '#ef4444' %}
+        {% set text_color = '#34d399' if score_val >= 70 else '#fbbf24' if score_val >= 40 else '#f87171' %}
+        {% set fill_attr = 'style="height:100%;width:' ~ score_val ~ '%;background:' ~ bg_color ~ '"' %}
+        {% set val_attr = 'style="font-weight:800;font-size:0.9rem;color:' ~ text_color ~ '"' %}
+        {% set cand_status = (s.status or '')|lower %}
+        <tr>
+          <!-- Rank -->
+          <td style="font-weight:800;font-size:0.9rem;color:var(--text-muted)">
+            {{ loop.index }}
+          </td>
+
+          <!-- Candidate -->
+          <td>
+            <a href="{{ url_for('resume.detail', candidate_id=s.candidate_id) }}" style="font-weight:700;color:var(--text-primary)">
+              {{ s.name or 'Unknown Candidate' }}
+            </a>
+            <div style="font-size:0.75rem;color:var(--text-muted)">{{ s.email or '' }}</div>
+          </td>
+
+          <!-- Job -->
+          <td style="font-size:0.82rem;color:var(--text-muted)">{{ s.jd_title or 'General' }}</td>
+
+          <!-- Overall Score -->
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:70px;height:6px;background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden">
+                <div {{ fill_attr|safe }}></div>
+              </div>
+              <span {{ val_attr|safe }}>
+                {{ "%.1f"|format(score_val) }}%
+              </span>
+            </div>
+          </td>
+
+          <!-- Breakdown -->
+          <td style="font-size:0.82rem">{{ s.skill_score|int }}%</td>
+          <td style="font-size:0.82rem">{{ s.experience_score|int }}%</td>
+          <td style="font-size:0.82rem">{{ s.education_score|int }}%</td>
+
+          <!-- Status Dropdown -->
+          <td>
+            <select class="form-control status-select" data-candidate-id="{{ s.candidate_id }}" style="font-size:0.78rem;padding:4px 8px;border-radius:6px;width:auto;cursor:pointer">
+              <option value="pending" {% if cand_status == 'pending' %}selected{% endif %}>Pending</option>
+              <option value="shortlisted" {% if cand_status == 'shortlisted' %}selected{% endif %}>Shortlisted</option>
+              <option value="interview" {% if cand_status == 'interview' %}selected{% endif %}>Interview</option>
+              <option value="rejected" {% if cand_status == 'rejected' %}selected{% endif %}>Rejected</option>
+            </select>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div style="display:flex;gap:6px">
+              <a href="{{ url_for('reports.candidate_pdf', candidate_id=s.candidate_id) }}?jd_id={{ s.jd_id }}" class="btn btn-danger btn-sm">
+                PDF
+              </a>
+              <a href="{{ url_for('analysis.result', candidate_id=s.candidate_id, jd_id=s.jd_id) }}" class="btn btn-secondary btn-sm">
+                ATS Ranking View
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No candidate evaluations found</h3>
+    <p>Upload resumes or adjust filters to view candidate rankings and reports.</p>
+    <a href="{{ url_for('resume.upload') }}" class="btn btn-primary">Upload Resumes</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.status-select').forEach(sel => {
+    sel.addEventListener('change', async function () {
+      const candidateId = this.dataset.candidateId;
+      const status = this.value;
+      try {
+        const res = await fetch(`/resume/${candidateId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `status=${status}`
+        });
+        const data = await res.json();
+        if (data.ok || data.status === 'success') {
+          if (typeof showToast === 'function') {
+            showToast('Status updated to ' + status, 'success');
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  });
+</script>
+{% endblock %}

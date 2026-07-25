@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Notifications — ResumeMatch.ai{% endblock %}
+{% block content %}
+<div class="page-header">
+ <div><h1 class="page-title"> Notifications</h1><p class="page-subtitle">All your activity updates</p></div>
+ <form method="POST" action="{{ url_for('dashboard.mark_read') }}">
+ <button type="submit" class="btn btn-secondary btn-sm"> Mark All Read</button>
+ </form>
+</div>
+
+<div class="glass-card">
+ {% if notifications %}
+ {% for n in notifications %}
+ <div style="display:flex;gap:16px;padding:18px 24px;border-bottom:1px solid var(--border-color);{{ 'opacity:0.5' if n.is_read }}">
+ <span style="font-size:1.4rem;flex-shrink:0">
+ {% if n.type=='success' %}{% elif n.type=='warning' %}️{% elif n.type=='error' %}{% else %}ℹ️{% endif %}
+ </span>
+ <div style="flex:1">
+ <div style="font-size:0.9rem;font-weight:{{ '400' if n.is_read else '600' }}">{{ n.message }}</div>
+ <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">{{ n.created_at[:16] if n.created_at else '' }}</div>
+ </div>
+ {% if not n.is_read %}<span class="pulse-dot"></span>{% endif %}
+ </div>
+ {% endfor %}
+ {% else %}
+ <div class="empty-state">
+ <div class="empty-state-icon"></div>
+ <h3>All caught up!</h3>
+ <p>No notifications to show.</p>
+ </div>
+ {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Profile — ResumeMatch.ai{% endblock %}
+{% block content %}
+<div class="page-header">
+ <div><h1 class="page-title"> My Profile</h1><p class="page-subtitle">Manage your account settings</p></div>
+</div>
+
+<div class="grid-2">
+ <!-- Profile form -->
+ <div class="glass-card p-24">
+ <h3 style="font-weight:700;margin-bottom:20px">Account Information</h3>
+ <form method="POST" action="{{ url_for('auth.profile') }}" class="loading-form">
+ <div class="form-group">
+ <label class="form-label">Full Name</label>
+ <input type="text" name="full_name" class="form-control" value="{{ user.full_name or '' }}" placeholder="Your full name">
+ </div>
+ <div class="form-group">
+ <label class="form-label">Username</label>
+ <input type="text" class="form-control" value="{{ user.username }}" readonly>
+ <div class="form-hint">Username cannot be changed.</div>
+ </div>
+ <div class="form-group">
+ <label class="form-label">Email</label>
+ <input type="email" class="form-control" value="{{ user.email }}" readonly>
+ </div>
+ <div class="form-group">
+ <label class="form-label">Company / Organisation</label>
+ <input type="text" name="company" class="form-control" value="{{ user.company or '' }}" placeholder="Your company">
+ </div>
+ <div class="form-group">
+ <label class="form-label">Role</label>
+ <select name="role" class="form-control">
+ <option value="recruiter" {{ 'selected' if user.role == 'recruiter' }}>HR Recruiter</option>
+ <option value="manager" {{ 'selected' if user.role == 'manager' }}>Hiring Manager</option>
+ <option value="admin" {{ 'selected' if user.role == 'admin' }}>Admin</option>
+ <option value="student" {{ 'selected' if user.role == 'student' }}>Student / Demo</option>
+ </select>
+ </div>
+ <div class="form-group">
+ <label class="form-label">Bio</label>
+ <textarea name="bio" class="form-control" rows="3" placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
+ </div>
+ <button type="submit" class="btn btn-primary"> Save Changes</button>
+ </form>
+ </div>
+
+ <!-- Account info -->
+ <div style="display:flex;flex-direction:column;gap:20px">
+ <div class="glass-card p-24">
+ <div style="text-align:center;padding:12px 0">
+ <div class="user-avatar" style="width:80px;height:80px;font-size:2rem;margin:0 auto 16px">
+ {{ (user.full_name or user.username or 'U')[0].upper() }}
+ </div>
+ <div style="font-size:1.25rem;font-weight:800">{{ user.full_name or user.username }}</div>
+ <div style="color:var(--text-muted);font-size:0.875rem;margin-top:4px">{{ user.email }}</div>
+ <div class="badge badge-primary" style="margin-top:10px">{{ user.role | capitalize }}</div>
+ </div>
+ <div class="divider"></div>
+ <div style="font-size:0.82rem;color:var(--text-muted)">
+ <div style="margin-bottom:6px"> Joined: {{ user.created_at[:10] if user.created_at else 'N/A' }}</div>
+ <div> Last login: {{ user.last_login[:16] if user.last_login else 'N/A' }}</div>
+ </div>
+ </div>
+
+ <div class="glass-card p-24">
+ <h3 style="font-weight:700;margin-bottom:16px"> Security</h3>
+ <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline w-full" style="justify-content:center;margin-bottom:12px">
+ Change Password
+ </a>
+ <a href="{{ url_for('auth.logout') }}" class="btn btn-danger w-full" style="justify-content:center">
+ Logout
+ </a>
+ </div>
+ </div>
+</div>
+{% endblock %}

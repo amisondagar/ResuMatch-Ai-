@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}ATS Analysis Result — ResumeMatch.ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+ <div>
+ <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+ <a href="{{ url_for('resume.detail', candidate_id=candidate.id) }}" class="btn btn-secondary btn-sm">← Back to Candidate Profile</a>
+ </div>
+ <h1 class="page-title"> ATS Analysis Result</h1>
+ <p class="page-subtitle">{{ candidate.name or 'Candidate' }} vs {{ jd.title if jd else 'Job' }}</p>
+ </div>
+ <div style="display:flex;gap:10px;flex-wrap:wrap">
+ <a href="{{ url_for('reports.candidate_pdf', candidate_id=candidate.id) }}?jd_id={{ jd.id if jd else '' }}" class="btn btn-primary"> Download PDF Report</a>
+ <a href="{{ url_for('resume.detail', candidate_id=candidate.id) }}" class="btn btn-secondary"> View Profile</a>
+ </div>
+</div>
+
+<!-- ── Score Hero ─────────────────────────────────────────────────────── -->
+<div class="glass-card p-24 mb-24 fade-in" style="display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+ <!-- Score Circle -->
+ <div class="score-circle" data-score="{{ score.overall_score|int }}">
+ <svg viewBox="0 0 120 120" width="140" height="140">
+ <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+ <circle cx="60" cy="60" r="52" fill="none"
+ stroke="{{ '#10b981' if score.overall_score >= 70 else '#f59e0b' if score.overall_score >= 40 else '#ef4444' }}"
+ stroke-width="10" stroke-linecap="round"
+ class="progress"
+ style="transform:rotate(-90deg);transform-origin:center"/>
+ </svg>
+ <div class="score-circle-value">0%</div>
+ <div class="score-circle-label">ATS SCORE</div>
+ </div>
+
+ <!-- Score Details -->
+ <div style="flex:1;min-width:240px">
+ <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+ <h2 style="font-size:1.5rem;font-weight:800">{{ candidate.name or 'Candidate' }}</h2>
+ <span class="badge badge-{{ 'success' if score.status=='shortlisted' else 'danger' if score.status=='rejected' else 'warning' }} status-badge">
+ {{ score.status | capitalize if score.status else 'Pending' }}
+ </span>
+ </div>
+ <div style="color:var(--text-muted);font-size:0.875rem;margin-bottom:20px">
+ {{ candidate.email or '' }} · {{ jd.title if jd else 'Job' }} {% if jd and jd.company %}@ {{ jd.company }}{% endif %}
+ </div>
+ <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.7;margin-bottom:16px">
+ {{ score.summary or '' }}
+ </div>
+ <!-- Update Status -->
+ <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+ <span style="font-size:0.82rem;color:var(--text-muted)">Update Status:</span>
+ <select class="form-control status-select" data-score-id="{{ score.id }}" style="width:auto;padding:8px 16px;font-size:0.82rem">
+ {% for status in ['pending','shortlisted','rejected','interview'] %}
+ <option value="{{ status }}" {{ 'selected' if score.status == status }}>{{ status|capitalize }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ </div>
+</div>
+
+<!-- ── Score Breakdown ────────────────────────────────────────────────── -->
+<div class="grid-2 mb-24">
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:20px"> Score Breakdown</h3>
+ {% for label, val, color in [
+ ('Skills Match', score.skill_score, 'success' if score.skill_score >= 60 else 'warning' if score.skill_score >= 35 else 'danger'),
+ ('Keyword Match', score.keyword_score, 'success' if score.keyword_score >= 60 else 'warning' if score.keyword_score >= 35 else 'danger'),
+ ('Experience Match', score.experience_score, 'success' if score.experience_score >= 70 else 'warning' if score.experience_score >= 40 else 'danger'),
+ ('Education Match', score.education_score, 'success' if score.education_score >= 70 else 'warning' if score.education_score >= 40 else 'danger'),
+ ] %}
+ <div class="score-bar-wrap">
+ <div class="score-bar-label">
+ <span>{{ label }}</span>
+ <span style="font-weight:700;color:{{ '#34d399' if color=='success' else '#fbbf24' if color=='warning' else '#f87171' }}">
+ {{ "%.1f"|format(val) }}%
+ </span>
+ </div>
+ <div class="score-bar-track">
+ <div class="score-bar-fill {{ color }}" data-value="{{ val }}" style="width:0%"></div>
+ </div>
+ </div>
+ {% endfor %}
+ </div>
+
+ <!-- Skills -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:16px">️ Skill Analysis</h3>
+
+ <div style="margin-bottom:16px">
+ <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--success);margin-bottom:8px">
+ Matched Skills ({{ score.matched_skills|length }})
+ </div>
+ <div style="display:flex;flex-wrap:wrap;gap:4px">
+ {% if score.matched_skills %}
+ {% for skill in score.matched_skills %}
+ <span class="tag-skill">{{ skill }}</span>
+ {% endfor %}
+ {% else %}
+ <span style="color:var(--text-muted);font-size:0.82rem">No matched skills</span>
+ {% endif %}
+ </div>
+ </div>
+
+ <div style="margin-bottom:16px">
+ <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--danger);margin-bottom:8px">
+ Missing Skills ({{ score.missing_skills|length }})
+ </div>
+ <div style="display:flex;flex-wrap:wrap;gap:4px">
+ {% if score.missing_skills %}
+ {% for skill in score.missing_skills[:15] %}
+ <span class="tag-skill missing">{{ skill }}</span>
+ {% endfor %}
+ {% else %}
+ <span style="color:#34d399;font-size:0.82rem"> No missing skills!</span>
+ {% endif %}
+ </div>
+ </div>
+
+ <div>
+ <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--secondary);margin-bottom:8px">
+ Extra Skills ({{ score.extra_skills|length }})
+ </div>
+ <div style="display:flex;flex-wrap:wrap;gap:4px">
+ {% for skill in score.extra_skills[:10] %}
+ <span class="tag-skill extra">{{ skill }}</span>
+ {% endfor %}
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- ── Suggestions + Interview Questions ───────────────────────────────── -->
+<div class="grid-2">
+ <!-- Suggestions -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:16px"> Improvement Suggestions</h3>
+ {% if score.suggestions %}
+ {% for sug in score.suggestions %}
+ <div style="padding:14px;background:rgba(99,102,241,0.07);border-radius:var(--radius-sm);border-left:3px solid var(--primary);margin-bottom:10px;font-size:0.875rem;line-height:1.6">
+ {{ sug }}
+ </div>
+ {% endfor %}
+ {% else %}
+ <p style="color:var(--text-muted)">No specific suggestions at this time.</p>
+ {% endif %}
+ </div>
+
+ <!-- Interview Questions -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:16px"> AI Interview Questions</h3>
+ {% if score.interview_questions %}
+ {% for q in score.interview_questions %}
+ <div style="padding:12px;background:rgba(6,182,212,0.06);border-radius:var(--radius-sm);border-left:3px solid var(--secondary);margin-bottom:8px">
+ <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--secondary);margin-bottom:4px">
+ {{ q.category }} · {{ q.skill }}
+ </div>
+ <div style="font-size:0.85rem;line-height:1.6">{{ q.question }}</div>
+ </div>
+ {% endfor %}
+ {% else %}
+ <p style="color:var(--text-muted)">Run analysis to generate interview questions.</p>
+ {% endif %}
+ </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.status-select').forEach(sel => {
+ sel.addEventListener('change', async function() {
+ const scoreId = this.dataset.scoreId;
+ const status = this.value;
+ try {
+ const res = await fetch(`/analysis/status/${scoreId}`, {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+ body: `status=${status}`
+ });
+ const data = await res.json();
+ if (data.ok && typeof showToast === 'function') {
+ showToast('Status updated to ' + status, 'success');
+ }
+ } catch(e) {
+ console.error(e);
+ }
+ });
+});
+</script>
+{% endblock %}

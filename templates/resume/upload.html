@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Upload Resumes — ResuMatch.Ai{% endblock %}
+{% block extra_css %}
+<style>
+  .file-item {
+    display:flex;align-items:center;gap:14px;
+    padding:12px 16px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--border-color);
+    border-radius:var(--radius-sm);
+    margin-bottom:8px;
+    animation:fadeInUp 0.3s ease;
+  }
+  .file-item.error { border-color:rgba(239,68,68,0.3); }
+  .file-icon { font-size:1.5rem; flex-shrink:0; }
+  .file-info { flex:1; min-width:0; }
+  .file-name { font-size:0.875rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file-size { font-size:0.75rem; color:var(--text-muted); }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+  <div><h1 class="page-title">Upload Resumes</h1><p class="page-subtitle">Upload PDF or DOCX resumes — single or bulk</p></div>
+  <a href="{{ url_for('resume.list_resumes') }}" class="btn btn-secondary">View Candidates</a>
+</div>
+
+<div style="width:100%">
+  <div class="glass-card p-24 fade-in">
+    <form method="POST" action="{{ url_for('resume.upload') }}" enctype="multipart/form-data" id="uploadForm" class="loading-form">
+
+      <!-- Drop Zone -->
+      <div class="upload-zone" id="uploadZone" style="padding:64px 32px;text-align:center;width:100%;border:2px dashed var(--glass-border);border-radius:var(--radius);background:rgba(255,255,255,0.02);cursor:pointer">
+        <input type="file" name="resumes" id="resumeInput" multiple accept=".pdf,.docx,.doc">
+        <div style="font-size:3rem;margin-bottom:14px;color:var(--primary-light)">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="upload-title" style="font-size:1.35rem;font-weight:700;margin-bottom:8px">Drag & Drop Resumes</div>
+        <div class="upload-sub" style="color:var(--text-muted);font-size:0.95rem">or click to browse files from computer (PDF, DOCX supported)</div>
+        <div style="margin-top:20px">
+          <span class="badge badge-primary" id="fileCount" style="padding:8px 18px;font-size:0.85rem">No files selected</span>
+        </div>
+      </div>
+
+      <!-- File Preview -->
+      <div id="filePreview" style="margin-top:16px"></div>
+
+      <div style="display:flex;gap:12px;margin-top:24px;justify-content:flex-end">
+        <button type="submit" class="btn btn-primary" id="uploadBtn" style="padding:12px 36px;font-size:0.95rem">
+          Upload & Parse Resumes
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('resumeInput').value='';document.getElementById('filePreview').innerHTML='';document.getElementById('fileCount').textContent='No files selected'">
+          Clear
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

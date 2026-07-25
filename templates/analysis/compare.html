@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Compare Candidates — ResumeMatch.ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+ <div><h1 class="page-title">️ Compare Candidates</h1><p class="page-subtitle">Side-by-side ATS comparison</p></div>
+</div>
+
+<!-- Selector form -->
+<div class="glass-card p-24 mb-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:16px">Select Candidates & Job</h3>
+ <form method="GET" action="{{ url_for('analysis.compare') }}" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+ <div style="flex:1;min-width:180px">
+ <label class="form-label">Candidate 1</label>
+ <select name="c1" class="form-control">
+ <option value="">-- Select --</option>
+ {% for c in candidates %}
+ <option value="{{ c.id }}" {{ 'selected' if c1_id == c.id }}>{{ c.name or 'Unknown' }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ <div style="flex:1;min-width:180px">
+ <label class="form-label">Candidate 2</label>
+ <select name="c2" class="form-control">
+ <option value="">-- Select --</option>
+ {% for c in candidates %}
+ <option value="{{ c.id }}" {{ 'selected' if c2_id == c.id }}>{{ c.name or 'Unknown' }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ <div style="flex:1;min-width:180px">
+ <label class="form-label">Job Description</label>
+ <select name="jd_id" class="form-control">
+ <option value="">-- Select --</option>
+ {% for jd in jds %}
+ <option value="{{ jd.id }}" {{ 'selected' if jd_id == jd.id }}>{{ jd.title }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ <button type="submit" class="btn btn-primary">️ Compare</button>
+ </form>
+</div>
+
+{% if c1 and c2 and s1 and s2 %}
+<!-- Comparison Table -->
+<div class="glass-card fade-in">
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr>
+ <th style="width:180px">Metric</th>
+ <th style="text-align:center">
+ <div class="user-avatar" style="margin:0 auto 6px">{{ (c1.name or 'C')[0].upper() }}</div>
+ {{ c1.name or 'Candidate 1' }}
+ {% if s1.status == 'shortlisted' %}<span class="badge badge-success" style="margin-left:8px">Shortlisted</span>{% endif %}
+ </th>
+ <th style="text-align:center">
+ <div class="user-avatar" style="margin:0 auto 6px;background:linear-gradient(135deg,#06b6d4,#10b981)">{{ (c2.name or 'C')[0].upper() }}</div>
+ {{ c2.name or 'Candidate 2' }}
+ {% if s2.status == 'shortlisted' %}<span class="badge badge-success" style="margin-left:8px">Shortlisted</span>{% endif %}
+ </th>
+ </tr>
+ </thead>
+ <tbody>
+ {% macro winner(v1, v2) %}
+ {% if v1 > v2 %}{% elif v2 > v1 %}—{% else %}{% endif %}
+ {% endmacro %}
+ {% macro score_cell(val, other) %}
+ <td style="text-align:center">
+ <span style="font-size:1.25rem;font-weight:800;color:{{ '#34d399' if val >= 70 else '#fbbf24' if val >= 40 else '#f87171' }}">
+ {{ "%.1f"|format(val) }}%
+ </span>
+ {% if val > other %}<span style="margin-left:6px;font-size:0.85rem"></span>{% endif %}
+ </td>
+ {% endmacro %}
+
+ <tr>
+ <td style="font-weight:600"> Overall ATS Score</td>
+ {{ score_cell(s1.overall_score, s2.overall_score) }}
+ {{ score_cell(s2.overall_score, s1.overall_score) }}
+ </tr>
+ <tr>
+ <td style="font-weight:600">️ Skills Match</td>
+ {{ score_cell(s1.skill_score, s2.skill_score) }}
+ {{ score_cell(s2.skill_score, s1.skill_score) }}
+ </tr>
+ <tr>
+ <td style="font-weight:600"> Keyword Match</td>
+ {{ score_cell(s1.keyword_score, s2.keyword_score) }}
+ {{ score_cell(s2.keyword_score, s1.keyword_score) }}
+ </tr>
+ <tr>
+ <td style="font-weight:600"> Experience</td>
+ {{ score_cell(s1.experience_score, s2.experience_score) }}
+ {{ score_cell(s2.experience_score, s1.experience_score) }}
+ </tr>
+ <tr>
+ <td style="font-weight:600"> Education</td>
+ {{ score_cell(s1.education_score, s2.education_score) }}
+ {{ score_cell(s2.education_score, s1.education_score) }}
+ </tr>
+ <tr>
+ <td style="font-weight:600"> Matched Skills</td>
+ <td style="text-align:center;font-size:0.82rem">{{ s1.matched_skills|length }}</td>
+ <td style="text-align:center;font-size:0.82rem">{{ s2.matched_skills|length }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight:600"> Missing Skills</td>
+ <td style="text-align:center;font-size:0.82rem">{{ s1.missing_skills|length }}</td>
+ <td style="text-align:center;font-size:0.82rem">{{ s2.missing_skills|length }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight:600"> Status</td>
+ <td style="text-align:center">
+ <span class="badge badge-{{ 'success' if s1.status=='shortlisted' else 'danger' if s1.status=='rejected' else 'warning' }}">
+ {{ s1.status|capitalize if s1.status else 'Pending' }}
+ </span>
+ </td>
+ <td style="text-align:center">
+ <span class="badge badge-{{ 'success' if s2.status=='shortlisted' else 'danger' if s2.status=='rejected' else 'warning' }}">
+ {{ s2.status|capitalize if s2.status else 'Pending' }}
+ </span>
+ </td>
+ </tr>
+ <tr>
+ <td></td>
+ <td style="text-align:center;padding:16px">
+ <a href="{{ url_for('analysis.result', candidate_id=c1.id, jd_id=jd_id) }}" class="btn btn-primary btn-sm">Full Report</a>
+ </td>
+ <td style="text-align:center;padding:16px">
+ <a href="{{ url_for('analysis.result', candidate_id=c2.id, jd_id=jd_id) }}" class="btn btn-primary btn-sm">Full Report</a>
+ </td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+</div>
+
+{% elif c1_id and c2_id and jd_id and (not s1 or not s2) %}
+<div class="glass-card">
+ <div class="empty-state">
+ <div class="empty-state-icon">️</div>
+ <h3>Analysis Not Found</h3>
+ <p>One or both candidates haven't been analyzed against this JD yet.</p>
+ <a href="{{ url_for('analysis.run') }}" class="btn btn-primary"> Run Analysis First</a>
+ </div>
+</div>
+{% else %}
+<div class="glass-card">
+ <div class="empty-state">
+ <div class="empty-state-icon">️</div>
+ <h3>Select Candidates to Compare</h3>
+ <p>Choose two candidates and a job description above to see a side-by-side comparison.</p>
+ </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Create Job Description — ResuMatch.Ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+  <div>
+    <h1 class="page-title">Create Job Description</h1>
+    <p class="page-subtitle">Paste or upload a job description to start screening</p>
+  </div>
+  <a href="{{ url_for('jd.list_jds') }}" class="btn btn-secondary">← Back to JDs</a>
+</div>
+
+<div style="width:100%">
+  <div class="glass-card p-24 fade-in">
+    <form method="POST" action="{{ url_for('jd.create') }}" enctype="multipart/form-data" class="loading-form">
+
+      <div class="form-group">
+        <label class="form-label" style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Job Description *</label>
+        <textarea name="description" class="form-control" rows="12" required
+                  placeholder="Paste the full job description text here (job title, responsibilities, required skills)..."></textarea>
+      </div>
+
+      <div class="divider" style="margin:20px 0"></div>
+
+      <div class="form-group">
+        <label class="form-label">Or Upload JD File (PDF / DOCX)</label>
+        <input type="file" name="jd_file" class="form-control" accept=".pdf,.docx,.doc" style="padding:10px;cursor:pointer">
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px;justify-content:flex-end">
+        <button type="submit" class="btn btn-primary" style="padding:12px 36px;font-size:0.95rem">
+          Submit & Create Job Description
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}{{ candidate.name or 'Candidate' }} — ResuMatch.Ai{% endblock %}
+{% block content %}
+
+{% set pd = candidate.parsed_data or {} %}
+{% set skills = pd.skills if pd and pd.skills else [] %}
+
+<div class="page-header fade-in">
+  <div style="display:flex;align-items:center;gap:16px">
+    <a href="{{ url_for('resume.list_resumes') }}" class="btn btn-secondary btn-sm">← Back to Candidates</a>
+    <div>
+      <h1 class="page-title">{{ candidate.name or 'Unknown Candidate' }}</h1>
+      <p class="page-subtitle">{{ candidate.email or '' }} {{ '· ' + candidate.phone if candidate.phone else '' }}</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <a href="{{ url_for('reports.candidate_pdf', candidate_id=candidate.id) }}" class="btn btn-danger">
+      📄 Download PDF Report
+    </a>
+    <a href="{{ url_for('resume.download', candidate_id=candidate.id) }}" class="btn btn-secondary">Download Original Resume</a>
+    <form method="POST" action="{{ url_for('resume.delete', candidate_id=candidate.id) }}">
+      <button type="submit" class="btn btn-danger confirm-delete">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start">
+
+  <!-- Left Column: Summary & Skill Keywords -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+
+    <!-- Candidate Card -->
+    <div class="glass-card p-24 fade-in">
+      <h3 style="font-weight:700;margin-bottom:16px">Candidate Summary Card</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:0.875rem;margin-bottom:16px">
+        <div><span style="color:var(--text-muted)">Name:</span> <strong>{{ candidate.name or 'Unknown' }}</strong></div>
+        <div><span style="color:var(--text-muted)">Email:</span> {{ pd.email or candidate.email or 'N/A' }}</div>
+        <div><span style="color:var(--text-muted)">Phone:</span> {{ pd.phone or candidate.phone or 'N/A' }}</div>
+        <div><span style="color:var(--text-muted)">Best-Fit Job Role:</span> <strong>{{ best_jd.title if best_jd else (candidate.job_title or pd.job_title or 'Software Developer') }}</strong></div>
+      </div>
+
+      <!-- Status Action Buttons -->
+      <div style="margin-bottom:20px;display:flex;gap:10px;align-items:center">
+        <span style="font-size:0.82rem;font-weight:700;color:var(--text-muted)">STATUS:</span>
+        <button class="btn btn-sm action-btn-status" data-cand-id="{{ candidate.id }}" data-status="shortlisted" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3)">
+          Shortlist
+        </button>
+        <button class="btn btn-sm action-btn-status" data-cand-id="{{ candidate.id }}" data-status="rejected" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)">
+          Reject
+        </button>
+        <span class="badge status-badge badge-{{ 'success' if candidate.status=='shortlisted' else 'danger' if candidate.status=='rejected' else 'warning' }}">
+          {{ candidate.status|capitalize if candidate.status else 'Pending' }}
+        </span>
+      </div>
+
+      <!-- ATS Match Score Bar -->
+      <div class="divider" style="margin:16px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:4px">Best-Fit ATS Screening Score</div>
+          <div style="font-size:1.75rem;font-weight:900;color:{{ '#34d399' if (candidate.match_score or candidate.quality_score)>=70 else '#fbbf24' if (candidate.match_score or candidate.quality_score)>=40 else '#f87171' }}">
+            {{ (candidate.match_score or candidate.quality_score)|int }}%
+          </div>
+        </div>
+      </div>
+      <div class="score-bar-track" style="margin-top:8px">
+        <div class="score-bar-fill {{ 'success' if (candidate.match_score or candidate.quality_score) >= 70 else 'warning' if (candidate.match_score or candidate.quality_score) >= 40 else 'danger' }}"
+             data-value="{{ candidate.match_score or candidate.quality_score }}" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Matched & Missing Skills Comparison -->
+    {% if best_score %}
+    <div class="glass-card p-24 fade-in">
+      <h3 style="font-weight:700;margin-bottom:12px">Job Alignment Skills Matrix</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:0.82rem;font-weight:700;color:#34d399;margin-bottom:8px">MATCHED SKILLS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            {% if best_score.matched_skills %}
+              {% for s in best_score.matched_skills %}
+                <span class="tag-skill">{{ s }}</span>
+              {% endfor %}
+            {% else %}
+              <span style="font-size:0.82rem;color:var(--text-muted)">General Skills Matched</span>
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.82rem;font-weight:700;color:#f87171;margin-bottom:8px">MISSING SKILLS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            {% if best_score.missing_skills %}
+              {% for s in best_score.missing_skills %}
+                <span class="tag-skill missing">{{ s }}</span>
+              {% endfor %}
+            {% else %}
+              <span style="font-size:0.82rem;color:var(--text-muted)">None Identified</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Skill Keywords -->
+    <div class="glass-card p-24 fade-in">
+      <h3 style="font-weight:700;margin-bottom:12px">Candidate Resume Skills</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% if skills %}
+          {% for skill in skills %}
+            <span class="tag-skill extra">{{ skill }}</span>
+          {% endfor %}
+        {% else %}
+          <span style="font-size:0.85rem;color:var(--text-muted)">General Technical Skills</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 4-5 Line Summary -->
+    <div class="glass-card p-24 fade-in">
+      <h3 style="font-weight:700;margin-bottom:12px">Professional Summary</h3>
+      <div style="font-size:0.875rem;color:var(--text-secondary);line-height:1.6;white-space:pre-line">
+        {% if pd and pd.summary %}
+          {{ pd.summary }}
+        {% else %}
+          Experienced {{ candidate.job_title or 'Professional' }} with background in {{ skills[:5]|join(', ') if skills else 'software engineering' }}. Proven track record in developing high-quality technical solutions, maintaining robust system architecture, and collaborating within multidisciplinary technical teams.
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Actions Sidebar -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Run Analysis -->
+    <div class="glass-card p-24">
+      <h3 style="font-weight:700;margin-bottom:16px">Run ATS Analysis</h3>
+      {% if jds %}
+        <form method="POST" action="{{ url_for('analysis.run') }}">
+          <input type="hidden" name="candidate_id" value="{{ candidate.id }}">
+          <div class="form-group">
+            <label class="form-label">Select Job Description</label>
+            <select name="jd_id" class="form-control">
+              {% for jd in jds %}
+                <option value="{{ jd.id }}">{{ jd.title }} {% if jd.company %}@ {{ jd.company }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-full" style="justify-content:center">Analyze Now</button>
+        </form>
+      {% else %}
+        <div style="padding:16px;background:rgba(99,102,241,0.06);border-radius:var(--radius-sm);border:1px dashed var(--border-color);text-align:center">
+          <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:12px">No Job Description found.</p>
+          <a href="{{ url_for('jd.create') }}" class="btn btn-primary btn-sm w-full" style="justify-content:center">Create New Job Description</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Tags -->
+    <div class="glass-card p-24">
+      <h3 style="font-weight:700;margin-bottom:12px">Tags</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        {% for tag in tags %}
+          <div class="tag">
+            {{ tag.tag_name }}
+            <form method="POST" action="{{ url_for('resume.delete_tag_route', tag_id=tag.id) }}" style="display:inline">
+              <input type="hidden" name="candidate_id" value="{{ candidate.id }}">
+              <button type="submit" class="tag-remove" title="Remove tag">×</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+      <form method="POST" action="{{ url_for('resume.add_tag_route', candidate_id=candidate.id) }}" style="display:flex;gap:8px">
+        <input type="text" name="tag_name" class="form-control" placeholder="Add tag..." style="font-size:0.82rem;padding:8px 12px">
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+      </form>
+    </div>
+
+    <!-- Notes -->
+    <div class="glass-card p-24">
+      <h3 style="font-weight:700;margin-bottom:12px">Recruiter Notes</h3>
+      {% for note in notes %}
+        <div style="padding:10px;background:rgba(255,255,255,0.04);border-radius:var(--radius-sm);margin-bottom:8px;font-size:0.82rem">
+          <div>{{ note.note_text }}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px">
+            <span style="color:var(--text-muted);font-size:0.72rem">{{ note.created_at[:16] if note.created_at else '' }}</span>
+            <form method="POST" action="{{ url_for('resume.delete_note_route', note_id=note.id) }}" style="display:inline">
+              <input type="hidden" name="candidate_id" value="{{ candidate.id }}">
+              <button type="submit" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem">Delete</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+      <form method="POST" action="{{ url_for('resume.add_note_route', candidate_id=candidate.id) }}">
+        <textarea name="note_text" class="form-control" rows="3" placeholder="Add a note..." style="font-size:0.82rem;margin-bottom:8px"></textarea>
+        <button type="submit" class="btn btn-primary btn-sm w-full" style="justify-content:center">Add Note</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

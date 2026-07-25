@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta name="description" content="ResuMatch.Ai — Smart AI Resume Screening for HR Recruiters">
+ <title>{% block title %}ResuMatch.Ai{% endblock %}</title>
+
+ <!-- Favicon -->
+ <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>RM</text></svg>">
+
+ <!-- Google Fonts -->
+ <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+ <!-- Main CSS -->
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+ <!-- Extra CSS per page -->
+ {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="animated-bg"></div>
+
+<!-- Flash Messages -->
+<div class="flash-container" id="flashContainer">
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% for category, message in messages %}
+ <div class="alert alert-{{ category }}">
+ <span>{{ message }}</span>
+ <button class="alert-close" onclick="this.closest('.alert').remove()">×</button>
+ </div>
+ {% endfor %}
+ {% endwith %}
+</div>
+
+{% if current_user %}
+<!-- ── Authenticated Layout: Sidebar + Topbar ──────────────────────────── -->
+<div class="app-layout">
+
+ <!-- Sidebar -->
+ <aside class="sidebar" id="sidebar">
+ <div class="sidebar-logo">
+ <div>
+ <div class="sidebar-logo-text" style="font-size:1.35rem">ResuMatch<span style="color:var(--primary-light)">.Ai</span></div>
+ <div class="sidebar-logo-tag">Hire Smart with ResuMatch.Ai</div>
+ </div>
+ </div>
+
+ <nav class="sidebar-nav">
+ <a href="{{ url_for('dashboard.index') }}" class="nav-item">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+ Dashboard
+ </a>
+ <a href="{{ url_for('resume.upload') }}" class="nav-item">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+ Upload Resumes
+ </a>
+ <a href="{{ url_for('resume.list_resumes') }}" class="nav-item">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+ Candidates
+ </a>
+ <a href="{{ url_for('jd.list_jds') }}" class="nav-item">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 1-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+ Job Descriptions
+ </a>
+ <a href="{{ url_for('analytics.index') }}" class="nav-item">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+ Analytics
+ </a>
+ <a href="{{ url_for('reports.index') }}" class="nav-item">
+ <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+ Candidate Reports
+ </a>
+ </nav>
+
+ <div class="sidebar-footer">
+ <a href="{{ url_for('auth.profile') }}" class="sidebar-user" style="text-decoration:none">
+ <div class="user-avatar">
+ {{ (current_user.full_name or current_user.username or 'U')[0].upper() }}
+ </div>
+ <div>
+ <div class="user-name">{{ current_user.full_name or current_user.username }}</div>
+ <div class="user-role">{{ current_user.role | capitalize }}</div>
+ </div>
+ </a>
+ </div>
+ </aside>
+
+ <!-- Top Bar -->
+ <header class="topbar">
+ <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar"></button>
+
+ <div class="topbar-search">
+ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted);flex-shrink:0">
+ <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+ </svg>
+ <input type="text" placeholder="Search candidates..." id="globalSearch"
+ onkeydown="if(event.key==='Enter'){ window.location='/resume/list?q='+this.value; }">
+ </div>
+
+ <div class="topbar-actions">
+ <!-- Theme toggle -->
+ <button class="topbar-btn" id="themeToggle" title="Toggle theme">
+ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+ </button>
+
+ <!-- User menu -->
+ <div class="dropdown">
+ <button class="topbar-btn" data-dropdown="userMenu" style="gap:6px;width:auto;padding:6px 12px;">
+ <div class="user-avatar" style="width:28px;height:28px;font-size:0.8rem">
+ {{ (current_user.full_name or current_user.username or 'U')[0].upper() }}
+ </div>
+ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+ </button>
+ <div class="dropdown-menu" id="userMenu">
+ <div style="padding:12px 16px;border-bottom:1px solid var(--border-color)">
+ <div style="font-weight:700;font-size:0.875rem">{{ current_user.full_name or current_user.username }}</div>
+ <div style="font-size:0.75rem;color:var(--text-muted)">{{ current_user.email }}</div>
+ </div>
+ <a href="{{ url_for('auth.profile') }}" class="dropdown-item">Profile</a>
+ <a href="{{ url_for('auth.change_password') }}" class="dropdown-item">Change Password</a>
+ <div class="dropdown-divider"></div>
+ <a href="{{ url_for('auth.logout') }}" class="dropdown-item" style="color:var(--danger)">Logout</a>
+ </div>
+ </div>
+ </div>
+ </header>
+
+ <!-- Main Content -->
+ <main class="main-content" id="mainContent">
+ {% block content %}{% endblock %}
+ </main>
+
+</div>
+
+{% else %}
+<!-- ── Guest Layout ──────────────────────────────────────────────────────── -->
+{% block guest_content %}{% endblock %}
+{% endif %}
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Run Analysis — ResumeMatch.ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+ <div><h1 class="page-title"> Run ATS Analysis</h1><p class="page-subtitle">Select a candidate and job description to analyze</p></div>
+</div>
+
+<div style="max-width:680px;margin:0 auto">
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:16px;font-size:1.1rem"> Single Candidate Analysis</h3>
+ <form method="POST" action="{{ url_for('analysis.run') }}" class="loading-form">
+ <div class="form-group">
+ <label class="form-label">Select Candidate *</label>
+ <select name="candidate_id" class="form-control" required>
+ <option value="">-- Select Candidate --</option>
+ {% for c in candidates %}
+ <option value="{{ c.id }}" {{ 'selected' if selected_candidate_id == c.id }}>
+ {{ c.name or 'Unknown' }} {% if c.email %}({{ c.email }}){% endif %}
+ </option>
+ {% endfor %}
+ </select>
+ {% if not candidates %}
+ <div class="form-hint">️ No candidates found. <a href="{{ url_for('resume.upload') }}">Upload resumes first.</a></div>
+ {% endif %}
+ </div>
+
+ <div class="form-group">
+ <label class="form-label">Select Job Description *</label>
+ <select name="jd_id" class="form-control" required>
+ <option value="">-- Select Job Description --</option>
+ {% for jd in jds %}
+ <option value="{{ jd.id }}" {{ 'selected' if selected_jd_id == jd.id }}>
+ {{ jd.title }} {% if jd.company %}@ {{ jd.company }}{% endif %}
+ </option>
+ {% endfor %}
+ </select>
+ {% if not jds %}
+ <div class="form-hint">️ No job descriptions found. <a href="{{ url_for('jd.create') }}">Create one first.</a></div>
+ {% endif %}
+ </div>
+
+ <button type="submit" class="btn btn-primary w-full" style="justify-content:center;margin-top:12px;padding:12px 0"
+ {{ 'disabled' if not candidates or not jds }}>
+ Run AI Analysis
+ </button>
+ </form>
+
+ <div class="divider" style="margin:24px 0"></div>
+
+ <!-- Bulk Analyze -->
+ <h3 style="font-weight:700;margin-bottom:8px;font-size:1.1rem"> Bulk Analyze All Candidates</h3>
+ <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:16px">
+ Screen all {{ candidates|length }} candidates against one job description at once.
+ </p>
+ <form method="POST" action="{{ url_for('analysis.bulk_analyze') }}" class="loading-form">
+ <div style="display:flex;gap:12px;align-items:flex-end">
+ <div style="flex:1">
+ <select name="jd_id" class="form-control" required>
+ <option value="">-- Select Job Description --</option>
+ {% for jd in jds %}
+ <option value="{{ jd.id }}">{{ jd.title }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ <button type="submit" class="btn btn-warning" {{ 'disabled' if not candidates or not jds }}>
+ Bulk Run
+ </button>
+ </div>
+ </form>
+ </div>
+</div>
+
+{% endblock %}

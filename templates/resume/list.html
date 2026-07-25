@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Candidates — ResuMatch.Ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+  <div><h1 class="page-title">Candidates</h1><p class="page-subtitle">{{ candidates|length }} candidate(s) parsed</p></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <a href="{{ url_for('reports.export_csv') }}" class="btn btn-success">📊 Export Candidates CSV</a>
+    <a href="{{ url_for('resume.upload') }}" class="btn btn-primary">Upload Resumes</a>
+  </div>
+</div>
+
+<!-- Search & Filter bar -->
+<div class="glass-card p-24 mb-24 fade-in">
+  <form method="GET" action="{{ url_for('resume.list_resumes') }}" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <div style="flex:1;min-width:220px">
+      <label class="form-label">Search</label>
+      <input type="text" name="q" class="form-control" placeholder="Search by name, email, or skill..."
+             value="{{ search_q }}">
+    </div>
+    <div>
+      <label class="form-label">Sort By</label>
+      <select name="sort" class="form-control" onchange="this.form.submit()">
+        <option value="newest"  {{ 'selected' if sort_by == 'newest' }}>Newest First</option>
+        <option value="name"    {{ 'selected' if sort_by == 'name' }}>Name A-Z</option>
+        <option value="score"   {{ 'selected' if sort_by == 'score' or sort_by == 'quality' }}>ATS Match Score (High → Low)</option>
+        <option value="status"  {{ 'selected' if sort_by == 'status' }}>Status (Shortlisted First)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="submit" class="btn btn-primary">Search</button>
+      <a href="{{ url_for('resume.list_resumes') }}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+{% if candidates %}
+<!-- Candidate Grid -->
+<div class="grid-auto fade-in">
+  {% for c in candidates %}
+  <div class="glass-card candidate-card p-20" id="cand-card-{{ c.id }}" style="display:flex;flex-direction:column">
+    
+    <!-- Card Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px">
+      <div>
+        <div style="font-size:1.15rem;font-weight:800;color:var(--text-main)">{{ (c.name or 'Candidate').split(' (')[0].split('\n')[0][:40] }}</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:2px">
+          {% if c.email %}{{ c.email }}{% endif %}
+          {% if c.email and c.phone %} · {% endif %}
+          {% if c.phone %}{{ c.phone }}{% endif %}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:1.3rem;font-weight:900;color:{{ '#34d399' if (c.match_score or c.quality_score)>=70 else '#fbbf24' if (c.match_score or c.quality_score)>=40 else '#f87171' }}">
+          {{ (c.match_score or c.quality_score)|int }}%
+        </div>
+        <div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);letter-spacing:0.5px">ATS MATCH</div>
+      </div>
+    </div>
+
+    <!-- Status Badge -->
+    <div style="margin-bottom:14px">
+      <span class="badge status-badge badge-{{ 'success' if c.status=='shortlisted' else 'danger' if c.status=='rejected' else 'warning' if c.status=='pending' else 'info' }}">
+        Status: {{ c.status|capitalize if c.status else 'Pending' }}
+      </span>
+    </div>
+
+    <!-- Skill Keywords -->
+    {% set skills = c.parsed_data.skills if c.parsed_data and c.parsed_data.skills else [] %}
+    <div style="margin-bottom:14px">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:6px">SKILL KEYWORDS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        {% if skills %}
+          {% for skill in skills[:7] %}
+            <span class="tag-skill">{{ skill }}</span>
+          {% endfor %}
+          {% if skills|length > 7 %}<span class="tag-skill" style="opacity:0.7">+{{ skills|length - 7 }}</span>{% endif %}
+        {% else %}
+          <span style="font-size:0.78rem;color:var(--text-muted)">General Technical Skills</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Short Summary (4-5 lines) -->
+    <div style="margin-bottom:16px;background:rgba(255,255,255,0.03);padding:12px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.06);flex:1">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:4px">SUMMARY</div>
+      <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.55;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">
+        {% if c.parsed_data and c.parsed_data.summary %}
+          {{ c.parsed_data.summary }}
+        {% else %}
+          Experienced {{ c.job_title or 'Professional' }} with demonstrated proficiency in {{ skills[:4]|join(', ') if skills else 'core domain practices' }}. Strong background in software design, problem solving, and collaborative project execution.
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Status Action Buttons -->
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="btn btn-sm action-btn-status" data-cand-id="{{ c.id }}" data-status="shortlisted" style="flex:1;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3)">
+        Shortlist
+      </button>
+      <button class="btn btn-sm action-btn-status" data-cand-id="{{ c.id }}" data-status="rejected" style="flex:1;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)">
+        Reject
+      </button>
+    </div>
+
+    <!-- Card Footer -->
+    <div style="display:flex;gap:6px;align-items:center;border-top:1px solid var(--border-color);padding-top:10px">
+      <a href="{{ url_for('resume.detail', candidate_id=c.id) }}" class="btn btn-primary btn-sm" style="flex:1;justify-content:center">
+        Profile
+      </a>
+      <a href="{{ url_for('resume.download', candidate_id=c.id) }}" class="btn btn-secondary btn-sm">Resume</a>
+      <form method="POST" action="{{ url_for('resume.delete', candidate_id=c.id) }}" style="display:inline">
+        <button type="submit" class="btn btn-danger btn-sm confirm-delete">Delete</button>
+      </form>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="glass-card">
+  <div class="empty-state">
+    <h3>No candidates found</h3>
+    <p>{{ 'No results for "' + search_q + '"' if search_q else 'Upload resumes to view candidates.' }}</p>
+    {% if not search_q %}
+      <a href="{{ url_for('resume.upload') }}" class="btn btn-primary">Upload First Resume</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

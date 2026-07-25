@@ -1,0 +1,35 @@
+# SQLite Database & Storage
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+*.db
+
+# User uploads & Generated Reports (Personal candidate data)
+uploads/*
+!uploads/.gitkeep
+reports/*
+!reports/.gitkeep
+
+# Environment variables & Secrets
+.env
+.env.*
+
+# Python Virtual Environment
+venv/
+env/
+.venv/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDE & System Junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+pyrightconfig.json

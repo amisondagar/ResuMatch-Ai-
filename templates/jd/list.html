@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Job Descriptions — ResuMatch.Ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+  <div><h1 class="page-title">Job Descriptions</h1><p class="page-subtitle">{{ jds|length }} job role(s)</p></div>
+  <a href="{{ url_for('jd.create') }}" class="btn btn-primary">New Job Description</a>
+</div>
+
+{% if jds %}
+<div class="grid-auto fade-in">
+  {% for jd in jds %}
+  <div class="glass-card p-24" style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div>
+          <div style="font-size:1.05rem;font-weight:700;margin-bottom:4px">{{ jd.title }}</div>
+          {% if jd.company %}<div style="color:var(--text-muted);font-size:0.82rem">{{ jd.company }}</div>{% endif %}
+        </div>
+        <span class="badge badge-primary">JD</span>
+      </div>
+    </div>
+
+    <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.6">
+      {{ jd.description[:180] }}{% if jd.description|length > 180 %}...{% endif %}
+    </div>
+
+    <div style="font-size:0.72rem;color:var(--text-muted)">
+      Created: {{ jd.created_at[:10] if jd.created_at else 'N/A' }}
+      {% if jd.updated_at and jd.updated_at != jd.created_at %}
+        · Updated: {{ jd.updated_at[:10] }}
+      {% endif %}
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="{{ url_for('jd.view', jd_id=jd.id) }}" class="btn btn-primary btn-sm" style="flex:1;justify-content:center">
+        View & Analyze
+      </a>
+      <a href="{{ url_for('jd.edit', jd_id=jd.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+      <form method="POST" action="{{ url_for('jd.delete', jd_id=jd.id) }}" style="display:inline">
+        <button type="submit" class="btn btn-danger btn-sm confirm-delete" title="Delete">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="glass-card">
+  <div class="empty-state">
+    <h3>No job descriptions yet</h3>
+    <p>Create your first job description to start screening resumes.</p>
+    <a href="{{ url_for('jd.create') }}" class="btn btn-primary">Create Job Description</a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

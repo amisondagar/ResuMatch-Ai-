@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ResuMatch.Ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Welcome back, {{ current_user.full_name or current_user.username }}! Here is your hiring overview.</p>
+  </div>
+  <div style="display:flex;gap:12px">
+    <a href="{{ url_for('resume.upload') }}"  class="btn btn-primary">Upload Resumes</a>
+    <a href="{{ url_for('jd.create') }}"      class="btn btn-secondary">New Job</a>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="grid-4 mb-24">
+  <div class="glass-card stat-card purple fade-in fade-in-1">
+    <div class="stat-card-icon" style="background:rgba(99,102,241,0.2);color:#818cf8">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    </div>
+    <div class="stat-card-value">{{ stats.total_candidates }}</div>
+    <div class="stat-card-label">Total Candidates</div>
+    <div class="stat-card-change text-primary-color">{{ stats.total_jds }} job roles</div>
+  </div>
+  <div class="glass-card stat-card green fade-in fade-in-2">
+    <div class="stat-card-icon" style="background:rgba(16,185,129,0.2);color:#34d399">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="stat-card-value">{{ stats.shortlisted }}</div>
+    <div class="stat-card-label">Shortlisted</div>
+    <div class="stat-card-change text-success">Ready for interview</div>
+  </div>
+  <div class="glass-card stat-card red fade-in fade-in-3">
+    <div class="stat-card-icon" style="background:rgba(239,68,68,0.2);color:#f87171">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <div class="stat-card-value">{{ stats.rejected }}</div>
+    <div class="stat-card-label">Rejected</div>
+    <div class="stat-card-change" style="color:#f87171">{{ stats.pending }} pending review</div>
+  </div>
+  <div class="glass-card stat-card cyan fade-in fade-in-4">
+    <div class="stat-card-icon" style="background:rgba(6,182,212,0.2);color:#22d3ee">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    </div>
+    <div class="stat-card-value">{{ stats.avg_score }}%</div>
+    <div class="stat-card-label">Average ATS Score</div>
+    <div class="stat-card-change" style="color:#22d3ee">Across all analyses</div>
+  </div>
+</div>
+
+<!-- Full-Width Recent Candidates Overview -->
+<div class="glass-card mb-24 fade-in">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h3 style="font-size:1.1rem;font-weight:700">Recent Candidate Evaluations</h3>
+      <p style="color:var(--text-muted);font-size:0.82rem;margin-top:2px">Latest candidate profiles and ATS match scores</p>
+    </div>
+    <a href="{{ url_for('resume.list_resumes') }}" class="btn btn-secondary btn-sm">View All Candidates</a>
+  </div>
+  <div style="padding:8px 0">
+    {% if stats.recent_uploads %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Target Role</th>
+              <th>Status</th>
+              <th>ATS Match Score</th>
+              <th style="text-align:right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in stats.recent_uploads %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div class="user-avatar" style="width:36px;height:36px;font-size:0.85rem;flex-shrink:0">
+                    {{ (c.name or 'U')[0].upper() }}
+                  </div>
+                  <div>
+                    <div style="font-weight:700;font-size:0.875rem">{{ c.name or 'Unknown' }}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted)">{{ c.email or 'No email' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-size:0.85rem;color:var(--text-secondary)">{{ c.job_title or 'Software Professional' }}</td>
+              <td>
+                <span class="badge status-badge badge-{{ 'success' if c.status=='shortlisted' else 'danger' if c.status=='rejected' else 'warning' }}">
+                  {{ c.status|capitalize if c.status else 'Pending' }}
+                </span>
+              </td>
+              <td>
+                {% if c.overall_score is not none %}
+                  <span class="badge badge-{{ 'success' if c.overall_score >= 70 else 'warning' if c.overall_score >= 40 else 'danger' }}" style="font-weight:800;font-size:0.85rem">
+                    {{ "%.0f"|format(c.overall_score) }}%
+                  </span>
+                {% else %}
+                  <span class="badge badge-muted">Not scored</span>
+                {% endif %}
+              </td>
+              <td style="text-align:right">
+                <a href="{{ url_for('resume.detail', candidate_id=c.id) }}" class="btn btn-primary btn-sm">View Profile</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state" style="padding:40px">
+        <h3>No resumes yet</h3>
+        <p>Upload your first resume to get started</p>
+        <a href="{{ url_for('resume.upload') }}" class="btn btn-primary btn-sm">Upload Resume</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

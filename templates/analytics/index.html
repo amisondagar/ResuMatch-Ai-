@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Analytics Dashboard — ResuMatch.Ai{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+ const _d = {{ data | tojson }};
+</script>
+{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+ <div>
+ <h1 class="page-title">Analytics Dashboard</h1>
+ <p class="page-subtitle">Real-time candidate metrics and ATS scoring insights</p>
+ </div>
+</div>
+
+<!-- 1. TOP STAT CARDS (Computed live directly from SQLite) -->
+<div class="grid-5 mb-24 fade-in" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px">
+ {% for label, val, color in [
+ ('Total Candidates', data.total_candidates, 'var(--primary-light)'),
+ ('Shortlisted', data.shortlisted, '#34d399'),
+ ('Rejected', data.rejected, '#f87171'),
+ ('Pending', data.pending, '#fbbf24'),
+ ('Average ATS Score', data.avg_score|string + '%', '#60a5fa')
+ ] %}
+ <div class="glass-card stat-card fade-in" style="padding:20px">
+ <div class="stat-card-value" style="color:{{ color }};font-size:1.8rem;font-weight:900">{{ val }}</div>
+ <div class="stat-card-label" style="font-size:0.78rem;margin-top:4px">{{ label }}</div>
+ </div>
+ {% endfor %}
+</div>
+
+{% if data.total_candidates == 0 %}
+<div class="glass-card p-32 text-center">
+ <div class="empty-state">
+ <h3>No Candidate Data Yet</h3>
+ <p>Upload resumes to view live candidate ATS scores, skill coverage, and status analytics.</p>
+ <a href="{{ url_for('resume.upload') }}" class="btn btn-primary" style="margin-top:12px"> Upload First Resume</a>
+ </div>
+</div>
+{% else %}
+
+<!-- 2. CANDIDATE ATS SCORE BAR CHART (Sorted Highest to Lowest) -->
+<div class="glass-card p-24 mb-24 fade-in">
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+ <div>
+ <h3 style="font-weight:700;margin:0">Candidate ATS Score Ranking</h3>
+ <p style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">Click any candidate's bar to open their full structured summary card</p>
+ </div>
+ <span class="badge badge-primary">Sorted High → Low</span>
+ </div>
+ <div id="chartCandidateScores" style="height:340px"></div>
+ <script id="dataCandidateScores" type="application/json">{{ data.candidate_scores_json | safe }}</script>
+</div>
+
+<!-- 3. SKILLS BREAKDOWN & STATUS DISTRIBUTION (Grid Row) -->
+<div class="grid-2 mb-24">
+ <!-- SKILLS BREAKDOWN CHART -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:8px">Candidate Skill Match Coverage</h3>
+ <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:16px">Skill coverage percentage detected per candidate</p>
+ <div id="chartSkillsBreakdown" style="height:300px"></div>
+ <script id="dataSkillsBreakdown" type="application/json">{{ data.skills_breakdown_json | safe }}</script>
+ </div>
+
+ <!-- SHORTLISTED vs REJECTED vs PENDING (Pie/Donut Chart) -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:8px">Candidate Status Overview</h3>
+ <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:16px">Live ratio of Shortlisted vs Rejected vs Pending</p>
+ <div id="chartStatusDonut" style="height:300px"></div>
+ <script id="dataStatusDonut" type="application/json">{{ data.status_donut_json | safe }}</script>
+ </div>
+</div>
+
+<!-- 4. CERTIFICATIONS & SKILLS OVERVIEW (Talent Pool Tag Cloud / Bar Overview) -->
+<div class="glass-card p-24 mb-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:8px">Talent Pool Certifications & Top Skills Overview</h3>
+ <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px">Most frequent certifications and technical skills across all uploaded candidates</p>
+ <div id="chartTalentPool" style="height:300px"></div>
+ <script id="dataTalentPool" type="application/json">{{ data.talent_pool_json | safe }}</script>
+</div>
+
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

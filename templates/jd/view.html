@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ jd.title }} — ResumeMatch.ai{% endblock %}
+{% block content %}
+
+<div class="page-header fade-in">
+ <div>
+ <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+ <a href="{{ url_for('jd.list_jds') }}" class="btn btn-secondary btn-sm">← Back</a>
+ <h1 class="page-title" style="margin:0">{{ jd.title }}</h1>
+ </div>
+ <p class="page-subtitle">{{ jd.company or 'No company' }} · {{ scores|length }} candidates analyzed</p>
+ </div>
+ <div style="display:flex;gap:10px;flex-wrap:wrap">
+ <a href="{{ url_for('jd.edit', jd_id=jd.id) }}" class="btn btn-secondary btn-sm">️ Edit</a>
+ {% if candidates %}
+ <form method="POST" action="{{ url_for('analysis.bulk_analyze') }}">
+ <input type="hidden" name="jd_id" value="{{ jd.id }}">
+ <button type="submit" class="btn btn-primary btn-sm loading-form"> Bulk Analyze All Candidates</button>
+ </form>
+ {% endif %}
+ </div>
+</div>
+
+<div class="grid-2 mb-24">
+ <!-- JD Details -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:12px"> Job Description</h3>
+ <div style="font-size:0.875rem;color:var(--text-secondary);line-height:1.7;max-height:300px;overflow-y:auto">
+ {{ jd.description | replace('\n','<br>') | safe }}
+ </div>
+ {% if jd.requirements %}
+ <div class="divider"></div>
+ <h3 style="font-weight:700;margin-bottom:8px">Requirements</h3>
+ <div style="font-size:0.875rem;color:var(--text-secondary);line-height:1.7">
+ {{ jd.requirements | replace('\n','<br>') | safe }}
+ </div>
+ {% endif %}
+ </div>
+
+ <!-- Quick stats -->
+ <div class="glass-card p-24 fade-in">
+ <h3 style="font-weight:700;margin-bottom:16px"> Analysis Summary</h3>
+ {% if scores %}
+ {% set avg = (scores | map(attribute='overall_score') | list | sum) / scores|length %}
+ {% set shortlisted = scores | selectattr('status','equalto','shortlisted') | list | length %}
+ {% set rejected = scores | selectattr('status','equalto','rejected') | list | length %}
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+ <div style="text-align:center;padding:16px;background:rgba(99,102,241,0.1);border-radius:var(--radius-sm)">
+ <div style="font-size:2rem;font-weight:900;color:var(--primary-light)">{{ scores|length }}</div>
+ <div style="font-size:0.75rem;color:var(--text-muted)">Analyzed</div>
+ </div>
+ <div style="text-align:center;padding:16px;background:rgba(99,102,241,0.1);border-radius:var(--radius-sm)">
+ <div style="font-size:2rem;font-weight:900;color:var(--primary-light)">{{ "%.0f"|format(avg) }}%</div>
+ <div style="font-size:0.75rem;color:var(--text-muted)">Avg Score</div>
+ </div>
+ <div style="text-align:center;padding:16px;background:rgba(16,185,129,0.1);border-radius:var(--radius-sm)">
+ <div style="font-size:2rem;font-weight:900;color:#34d399">{{ shortlisted }}</div>
+ <div style="font-size:0.75rem;color:var(--text-muted)">Shortlisted</div>
+ </div>
+ <div style="text-align:center;padding:16px;background:rgba(239,68,68,0.1);border-radius:var(--radius-sm)">
+ <div style="font-size:2rem;font-weight:900;color:#f87171">{{ rejected }}</div>
+ <div style="font-size:0.75rem;color:var(--text-muted)">Rejected</div>
+ </div>
+ </div>
+ <div style="display:flex;gap:10px;flex-wrap:wrap">
+ <a href="{{ url_for('analysis.ranking', jd_id=jd.id) }}" class="btn btn-primary btn-sm" style="flex:1;justify-content:center"> View Rankings</a>
+ <a href="{{ url_for('reports.ranking_pdf', jd_id=jd.id) }}" class="btn btn-secondary btn-sm"> PDF Report</a>
+ <a href="{{ url_for('reports.export_csv') }}?jd_id={{ jd.id }}" class="btn btn-secondary btn-sm"> CSV</a>
+ </div>
+ {% else %}
+ <div class="empty-state" style="padding:30px">
+ <div style="font-size:2rem"></div>
+ <h3 style="font-size:1rem">No analyses yet</h3>
+ {% if candidates %}
+ <form method="POST" action="{{ url_for('analysis.bulk_analyze') }}" style="margin-top:12px">
+ <input type="hidden" name="jd_id" value="{{ jd.id }}">
+ <button type="submit" class="btn btn-primary btn-sm"> Analyze All Candidates</button>
+ </form>
+ {% else %}
+ <a href="{{ url_for('resume.upload') }}" class="btn btn-outline btn-sm" style="margin-top:12px"> Upload Resumes First</a>
+ {% endif %}
+ </div>
+ {% endif %}
+ </div>
+</div>
+
+<!-- Scored candidates table -->
+{% if scores %}
+<div class="glass-card fade-in">
+ <div style="padding:20px 24px;border-bottom:1px solid var(--border-color)">
+ <h3 style="font-weight:700"> Ranked Candidates</h3>
+ </div>
+ <div class="table-wrap">
+ <table>
+ <thead>
+ <tr>
+ <th>#</th><th>Candidate</th><th>Overall Score</th><th>Skills</th>
+ <th>Experience</th><th>Education</th><th>Status</th><th>Actions</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for s in scores %}
+ <tr>
+ <td style="font-weight:700;color:var(--text-muted)">{{ loop.index }}</td>
+ <td>
+ <div style="font-weight:600">{{ s.name or 'Unknown' }}</div>
+ <div style="font-size:0.75rem;color:var(--text-muted)">{{ s.email or '' }}</div>
+ </td>
+ <td>
+ <div style="font-weight:700;color:{{ '#34d399' if s.overall_score >= 70 else '#fbbf24' if s.overall_score >= 40 else '#f87171' }}">
+ {{ "%.1f"|format(s.overall_score) }}%
+ </div>
+ </td>
+ <td><div style="font-size:0.82rem">{{ "%.0f"|format(s.skill_score) }}%</div></td>
+ <td><div style="font-size:0.82rem">{{ "%.0f"|format(s.experience_score) }}%</div></td>
+ <td><div style="font-size:0.82rem">{{ "%.0f"|format(s.education_score) }}%</div></td>
+ <td>
+ <span class="badge badge-{{ 'success' if s.status=='shortlisted' else 'danger' if s.status=='rejected' else 'warning' if s.status=='pending' else 'info' }}">
+ {{ s.status|capitalize if s.status else 'Pending' }}
+ </span>
+ </td>
+ <td>
+ <a href="{{ url_for('analysis.result', candidate_id=s.candidate_id, jd_id=jd.id) }}" class="btn btn-primary btn-sm">View</a>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+</div>
+{% endif %}
+
+{% endblock %}
