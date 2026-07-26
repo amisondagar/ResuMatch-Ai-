@@ -13,10 +13,17 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 
     # ─── Paths ───────────────────────────────────────────────────────────────
-    BASE_DIR       = os.path.abspath(os.path.dirname(__file__))
-    DATABASE_PATH  = os.path.join(BASE_DIR, 'database', 'resumematch.db')
-    UPLOAD_FOLDER  = os.path.join(BASE_DIR, 'uploads')
-    REPORTS_FOLDER = os.path.join(BASE_DIR, 'reports')
+    BASE_DIR  = os.path.abspath(os.path.dirname(__file__))
+    IS_VERCEL = bool(os.environ.get('VERCEL'))
+
+    if IS_VERCEL:
+        DATABASE_PATH  = os.path.join('/tmp', 'resumematch.db')
+        UPLOAD_FOLDER  = os.path.join('/tmp', 'uploads')
+        REPORTS_FOLDER = os.path.join('/tmp', 'reports')
+    else:
+        DATABASE_PATH  = os.path.join(BASE_DIR, 'database', 'resumematch.db')
+        UPLOAD_FOLDER  = os.path.join(BASE_DIR, 'uploads')
+        REPORTS_FOLDER = os.path.join(BASE_DIR, 'reports')
 
     # ─── Upload Settings ─────────────────────────────────────────────────────
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024          # 16 MB max file size
