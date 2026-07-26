@@ -1,4 +1,4 @@
-# RESUMatch.ai
+# ResuMatch.Ai
 
 Smart Resume Screening Powered by Artificial Intelligence
 
