@@ -13,3 +13,4 @@ python-dateutil>=2.8.2
 Pillow>=10.0.0
 reportlab>=4.0.0
 types-reportlab>=4.5.0
+psycopg2-binary>=2.9.0

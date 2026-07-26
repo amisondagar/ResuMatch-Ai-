@@ -28,16 +28,77 @@ from datetime import datetime
 from flask import current_app, g
 
 
+# ─── DB Adapter ────────────────────────────────────────────────────────────
+
+class DBAdapter:
+    """Unified wrapper around sqlite3 and psycopg2 connections."""
+    def __init__(self, conn, is_postgres=False):
+        self.conn = conn
+        self.is_postgres = is_postgres
+        self._lastrowid = None
+
+    def execute(self, query, params=()):
+        cursor = self.conn.cursor()
+        if self.is_postgres:
+            pg_query = query.replace('?', '%s')
+            is_insert = pg_query.strip().upper().startswith("INSERT")
+            if is_insert and "RETURNING" not in pg_query.upper():
+                pg_query = pg_query + " RETURNING id"
+            cursor.execute(pg_query, params)
+            if is_insert:
+                row = cursor.fetchone()
+                if row:
+                    self._lastrowid = row['id'] if isinstance(row, dict) else row[0]
+        else:
+            cursor.execute(query, params)
+            if hasattr(cursor, 'lastrowid'):
+                self._lastrowid = cursor.lastrowid
+        return cursor
+
+    @property
+    def lastrowid(self):
+        return self._lastrowid
+
+    def executescript(self, script):
+        cursor = self.conn.cursor()
+        if self.is_postgres:
+            cursor.execute(script)
+        else:
+            cursor.executescript(script)
+        return cursor
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
 # ─── Connection Helpers ────────────────────────────────────────────────────
 
 def get_db():
-    """Return a database connection for the current request context."""
+    """Return a database connection (PostgreSQL if DATABASE_URL set, else SQLite)."""
     if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE_PATH'],
-            detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row   # rows behave like dicts
+        db_url = os.environ.get('DATABASE_URL') or (current_app.config.get('DATABASE_URL') if current_app else None)
+        if db_url:
+            if db_url.startswith('postgres://'):
+                db_url = db_url.replace('postgres://', 'postgresql://', 1)
+            try:
+                import psycopg2
+                from psycopg2.extras import RealDictCursor
+                conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+                g.db = DBAdapter(conn, is_postgres=True)
+            except Exception as e:
+                print(f"PostgreSQL connection notice ({e}), using local database.")
+                db_url = None
+
+        if 'db' not in g:
+            db_path = current_app.config['DATABASE_PATH']
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+            conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
+            conn.row_factory = sqlite3.Row
+            g.db = DBAdapter(conn, is_postgres=False)
+
     return g.db
 
 
@@ -50,7 +111,121 @@ def close_db(e=None):
 # ─── Database Initialisation ───────────────────────────────────────────────
 
 def init_db():
-    """Create all tables if they do not exist.  Safe to call every startup."""
+    """Create all tables if they do not exist. Safe to call every startup."""
+    db_url = os.environ.get('DATABASE_URL') or (current_app.config.get('DATABASE_URL') if current_app else None)
+    if db_url:
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        try:
+            import psycopg2
+            conn = psycopg2.connect(db_url)
+            c = conn.cursor()
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id            SERIAL PRIMARY KEY,
+                    username      VARCHAR(255) UNIQUE NOT NULL,
+                    email         VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    full_name     VARCHAR(255),
+                    company       VARCHAR(255),
+                    role          VARCHAR(50) DEFAULT 'recruiter',
+                    bio           TEXT,
+                    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_login    TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS candidates (
+                    id              SERIAL PRIMARY KEY,
+                    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    name            VARCHAR(255),
+                    email           VARCHAR(255),
+                    phone           VARCHAR(100),
+                    resume_filename VARCHAR(255) NOT NULL,
+                    resume_path     TEXT NOT NULL,
+                    file_type       VARCHAR(50),
+                    raw_text        TEXT,
+                    parsed_data     TEXT,
+                    is_duplicate    INTEGER DEFAULT 0,
+                    quality_score   REAL DEFAULT 0,
+                    status          VARCHAR(50) DEFAULT 'Pending',
+                    job_title       VARCHAR(255),
+                    github          VARCHAR(255),
+                    linkedin        VARCHAR(255),
+                    match_score     REAL DEFAULT 0,
+                    jd_id           INTEGER,
+                    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS job_descriptions (
+                    id           SERIAL PRIMARY KEY,
+                    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    title        VARCHAR(255) NOT NULL,
+                    company      VARCHAR(255),
+                    description  TEXT NOT NULL,
+                    requirements TEXT,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS scores (
+                    id                  SERIAL PRIMARY KEY,
+                    candidate_id        INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+                    jd_id               INTEGER,
+                    user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    overall_score       REAL DEFAULT 0,
+                    skill_score         REAL DEFAULT 0,
+                    experience_score    REAL DEFAULT 0,
+                    education_score     REAL DEFAULT 0,
+                    keyword_score       REAL DEFAULT 0,
+                    matched_skills      TEXT,
+                    missing_skills      TEXT,
+                    extra_skills        TEXT,
+                    summary             TEXT,
+                    suggestions         TEXT,
+                    interview_questions TEXT,
+                    status              VARCHAR(50) DEFAULT 'pending',
+                    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS bookmarks (
+                    id           SERIAL PRIMARY KEY,
+                    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, candidate_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS notes (
+                    id           SERIAL PRIMARY KEY,
+                    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+                    note_text    TEXT NOT NULL,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS tags (
+                    id           SERIAL PRIMARY KEY,
+                    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+                    tag_name     VARCHAR(255) NOT NULL,
+                    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id         SERIAL PRIMARY KEY,
+                    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    message    TEXT NOT NULL,
+                    type       VARCHAR(50) DEFAULT 'info',
+                    is_read    INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Supabase PostgreSQL init notice: {e}")
+
     db_path = current_app.config['DATABASE_PATH']
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
