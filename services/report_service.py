@@ -31,7 +31,10 @@ def generate_candidate_pdf(candidate, score, jd, output_path):
     Uses ReportLab / FPDF with automatic fallback to guarantee valid file generation.
     """
     try:
-        from fpdf import FPDF
+        try:
+            from fpdf import FPDF
+        except ImportError:
+            from fpdf2 import FPDF
 
         class CandidatePDF(FPDF):
             def header(self):
@@ -467,7 +470,10 @@ def generate_ranking_pdf(scores, jd, output_path):
     Generate a full candidate ranking summary PDF report.
     """
     try:
-        from fpdf import FPDF
+        try:
+            from fpdf import FPDF
+        except ImportError:
+            from fpdf2 import FPDF
 
         class RankingPDF(FPDF):
             def header(self):
