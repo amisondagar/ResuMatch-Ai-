@@ -8,12 +8,32 @@ All app-wide settings live here. Changing a value here affects the whole app.
 import os
 import secrets
 
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Load .env / .env.local if present locally
+for env_name in ['.env', '.env.local']:
+    env_path = os.path.join(BASE_DIR, env_name)
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+        except Exception:
+            pass
+
+
 class Config:
     # ─── Security ────────────────────────────────────────────────────────────
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 
+    # ─── Database ────────────────────────────────────────────────────────────
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+
     # ─── Paths ───────────────────────────────────────────────────────────────
-    BASE_DIR  = os.path.abspath(os.path.dirname(__file__))
+    BASE_DIR  = BASE_DIR
     IS_VERCEL = bool(os.environ.get('VERCEL'))
 
     if IS_VERCEL:
