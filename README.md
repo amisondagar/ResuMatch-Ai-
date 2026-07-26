@@ -52,8 +52,3 @@ RESUMatch.ai uses AI to read resumes automatically, compare them with the job de
 ## Built By
 
 **Ami Sondagar**
-GitHub: [amisondagar](https://github.com/amisondagar)
-
----
-
-RESUMatch.ai — Smart Resume Screening Powered by Artificial Intelligence
